@@ -1,0 +1,12 @@
+mission: Explore the shopping cart for state, calculation, and persistence problems.
+focus_areas:
+  - quantity changes
+  - removing and restoring products
+  - discounts
+  - shipping selection
+  - navigation and refresh
+forbidden_actions:
+  - submitting the checkout form
+  - opening external websites
+max_actions: 25
+

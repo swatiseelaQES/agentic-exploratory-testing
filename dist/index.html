@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A controlled shopping application for agentic exploratory-testing experiments.">
+  <title>Northstar Supply</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2317282f'/%3E%3Cpath d='M32 10l5.4 16.6H55L40.8 37l5.4 17L32 43.6 17.8 54l5.4-17L9 26.6h17.6z' fill='%23e6b85c'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#products" aria-label="Northstar Supply home"><span>✦</span> Northstar Supply</a>
+    <nav aria-label="Primary navigation">
+      <button class="nav-button active" data-view="products">Shop</button>
+      <button class="nav-button" data-view="cart">Cart <span id="cart-count" class="count">0</span></button>
+      <button class="nav-button" data-view="checkout">Checkout</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="products-view" class="view">
+      <div class="section-heading">
+        <div><p class="eyebrow">FIELD ESSENTIALS</p><h1>Tools for the everyday trail</h1></div>
+        <p>Durable, useful gear with no unnecessary fuss.</p>
+      </div>
+      <div id="product-grid" class="product-grid"></div>
+    </section>
+
+    <section id="cart-view" class="view" hidden>
+      <div class="section-heading"><div><p class="eyebrow">YOUR SELECTION</p><h1>Shopping cart</h1></div></div>
+      <div class="cart-layout">
+        <div>
+          <div id="cart-items" class="cart-items"></div>
+          <div id="undo-region" class="undo-region" hidden>
+            <span id="undo-message"></span><button id="undo-button" class="text-button">Undo</button>
+          </div>
+        </div>
+        <aside class="summary" aria-label="Order summary">
+          <h2>Order summary</h2>
+          <div class="summary-row"><span>Subtotal</span><strong id="subtotal">$0.00</strong></div>
+          <div class="discount-row">
+            <label for="discount-code">Discount code</label>
+            <div><input id="discount-code" autocomplete="off" placeholder="Enter code"><button id="apply-discount">Apply</button></div>
+            <p id="discount-message" role="status"></p>
+          </div>
+          <fieldset>
+            <legend>Shipping</legend>
+            <label><input type="radio" name="shipping" value="standard" checked> Standard <span>Free</span></label>
+            <label><input type="radio" name="shipping" value="express"> Express <span>$12.00</span></label>
+          </fieldset>
+          <div id="discount-line" class="summary-row" hidden><span>Discount</span><strong id="discount-amount">-$0.00</strong></div>
+          <div class="summary-row total"><span>Total</span><strong id="total">$0.00</strong></div>
+          <button class="primary full" data-view="checkout">Continue to checkout</button>
+        </aside>
+      </div>
+    </section>
+
+    <section id="checkout-view" class="view" hidden>
+      <div class="section-heading"><div><p class="eyebrow">FINAL STEP</p><h1>Checkout</h1></div></div>
+      <form id="checkout-form" novalidate>
+        <div class="form-grid">
+          <label>Full name<input name="name" required></label>
+          <label>Email<input name="email" type="email" required></label>
+          <label class="wide">Street address<input name="address" required></label>
+          <label>City<input name="city" required></label>
+          <label>Postal code<input name="postal" required></label>
+        </div>
+        <p id="form-error" class="form-error" role="alert"></p>
+        <button class="primary" type="submit">Place order</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
+
