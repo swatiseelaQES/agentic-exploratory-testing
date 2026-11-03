@@ -1,6 +1,7 @@
 import json
 import re
 from datetime import datetime, timezone
+from html import escape
 from pathlib import Path
 
 
@@ -233,6 +234,14 @@ def write_report(
 
     raw_data_path.write_text(
         json.dumps(history, indent=2),
+        encoding="utf-8",
+    )
+
+    (session_dir / "report.html").write_text(
+        _render_html(
+            generated, charter_data.get("mission", "Not supplied"),
+            reproduced, review_items, focus_areas, coverage, history,
+        ),
         encoding="utf-8",
     )
 
@@ -485,3 +494,113 @@ def _render_action_appendix(
 
     lines.append("")
     return lines
+def _render_html(generated, mission, findings, review, areas, coverage, history):
+    def e(value):
+        return escape(str(value or ""))
+
+    def links(steps):
+        return " ".join(
+            f'<a href="#step-{step}">Step {step}</a>'
+            for step in steps if isinstance(step, int) and 1 <= step <= len(history)
+        ) or "No linked steps"
+
+    exercised = sum(_normalize(area) in coverage for area in areas)
+    metrics = [
+        (len(history), "Trace entries"),
+        (len(findings), "Reproduced findings"),
+        (f"{exercised}/{len(areas)}", "Charter areas exercised"),
+        (len(review), "Items for human review"),
+    ]
+    parts = ["""<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exploratory testing report</title>
+<style>
+* { box-sizing: border-box }
+body { margin: 0; background: #f7f5ef; color: #183633; font: 1rem/1.55 system-ui, sans-serif }
+header { background: #103f3e; color: #fff; padding: 2rem max(1rem, calc((100% - 68rem)/2)) }
+main { max-width: 70rem; margin: auto; padding: 1rem 1rem 3rem }
+h1, h2, h3, p { margin: 0 0 .6rem }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: .75rem }
+section { margin-top: 1.7rem }
+article, .tile, .trace { background: white; border: 1px solid #d4dfdb; border-radius: .7rem; padding: 1rem; overflow-wrap: anywhere }
+article, .trace { margin-bottom: .75rem }
+.tile strong { display: block; font-size: 1.5rem }
+.finding { border-left: .35rem solid #bc5948 }
+.observed { background: #fff1eb; padding: .65rem; border-radius: .35rem }
+summary { cursor: pointer; font-weight: 650 }
+a { color: #075955 }
+:target { outline: 3px solid #bc5948 }
+.steps a { display: inline-block; margin-right: .45rem }
+</style></head><body>""",
+        f"<header><p>Session report · {e(generated)}</p><h1>Exploratory testing</h1>"
+        f"<p>{e(mission)}</p></header><main><div class='grid'>",
+    ]
+    parts.extend(f'<div class="tile"><strong>{count}</strong>{label}</div>' for count, label in metrics)
+    parts.append("</div><section><h2>Reproduced findings</h2>")
+    if not findings:
+        parts.append("<p>No finding reached the reproduced threshold.</p>")
+    for index, finding in enumerate(findings, 1):
+        reproduction = "".join(f"<li>{e(step)}</li>" for step in finding.get("reproduction", []))
+        parts.append(
+            f'<article class="finding"><h3>F{index} · {e(finding["title"])}</h3>'
+            f'<div class="grid"><p><strong>Expected</strong><br>{e(finding["expected"])}</p>'
+            f'<p class="observed"><strong>Observed</strong><br>{e(finding["actual"])}</p></div>'
+            f'<p class="steps">{links(finding.get("evidence_steps", []))}</p>'
+            f'<details><summary>Reproduction notes</summary>'
+            f'<p>Confidence · {e(finding["confidence"])}</p>'
+            + (f"<ol>{reproduction}</ol>" if reproduction else "<p>No steps recorded.</p>")
+            + "</details></article>"
+        )
+    parts.append("</section><section><h2>Human review</h2>")
+    if not review:
+        parts.append("<p>No findings queued for review.</p>")
+    for finding in review:
+        reason = (
+            "Causal explanation remains inferred."
+            if finding.get("status") == "reproduced"
+            else "Further reproduction needed."
+        )
+        parts.append(
+            f'<article><h3>{e(finding["title"])}</h3><p>{reason}</p>'
+            f'<p>{e(finding.get("causal_explanation") if finding.get("status") == "reproduced" else finding.get("actual"))}</p>'
+            f'<p class="steps">{links(finding.get("evidence_steps", []))}</p></article>'
+        )
+    parts.append('</section><section><h2>Coverage and depth</h2><div class="grid">')
+    if not areas:
+        parts.append("<p>No charter areas supplied.</p>")
+    for area in areas:
+        steps = coverage.get(_normalize(area), {}).get("steps", [])
+        parts.append(
+            f'<article><h3>{e(area)}</h3><p>{_depth_label(len(steps))}</p>'
+            f'<p class="steps">{links(steps)}</p></article>'
+        )
+    parts.append('</div></section><section><details><summary>Action trace</summary>')
+    for index, item in enumerate(history, 1):
+        decision = item["decision"]
+        error = item.get("execution_error")
+        parts.append(
+            f'<article class="trace" id="step-{index}"><h3>Step {index} · {e(decision["action"])}</h3>'
+            f'<p>{e(decision.get("coverage_area"))}</p>'
+            f'<p>{e(decision.get("learned") or decision.get("reason"))}</p>'
+            + (f'<p><strong>Execution error</strong> · {e(error)}</p>' if error else "")
+            + "</article>"
+        )
+    parts.append(
+        '</details></section><footer><a href="report.md">Markdown report</a> · '
+        '<a href="session.json">Session data</a></footer></main>'
+        """<script>
+function revealStep() {
+    const target = document.getElementById(location.hash.slice(1));
+    const trace = target?.closest("details");
+    if (trace) {
+        trace.open = true;
+        target.scrollIntoView();
+    }
+}
+addEventListener("hashchange", revealStep);
+revealStep();
+</script></body></html>"""
+    )
+    return "\n".join(parts)
+
